@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理後台 · 星語占星</title>
+  <style>
+    :root {
+      --bg: #0a0a1a; --surface: #111128; --surface2: #1a1a35;
+      --accent: #c89aff; --gold: #f0c060; --text: #e8e0ff;
+      --muted: #8878aa; --border: rgba(200,154,255,0.15);
+      --danger: #ff6b6b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif; min-height: 100vh; }
+
+    /* Login */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+    }
+    .login-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 2.5rem; width: 340px; text-align: center;
+    }
+    .login-box h1 { color: var(--accent); font-size: 1.4rem; margin-bottom: 0.4rem; }
+    .login-box p { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.8rem; }
+    .login-box input {
+      width: 100%; padding: 0.7rem 1rem; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+      font-size: 1rem; outline: none; margin-bottom: 1rem; letter-spacing: 0.1em;
+    }
+    .login-box input:focus { border-color: var(--accent); }
+    .login-error { color: var(--danger); font-size: 0.82rem; margin-bottom: 0.8rem; display: none; }
+
+    /* Main layout */
+    #admin-screen { display: none; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+      background: rgba(10,10,26,0.9); position: sticky; top: 0; z-index: 10;
+    }
+    .header-logo { color: var(--accent); font-size: 1.1rem; }
+    .header-logo span { color: var(--gold); }
+    #logout-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      padding: 0.35rem 0.9rem; border-radius: 6px; cursor: pointer;
+      font-size: 0.82rem; transition: border-color 0.2s, color 0.2s;
+    }
+    #logout-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .admin-main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .tabs { display: flex; gap: 0; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .tab {
+      padding: 0.7rem 1.5rem; cursor: pointer; color: var(--muted);
+      font-size: 0.9rem; border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s; margin-bottom: -1px;
+    }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* Write panel */
+    #panel-write { display: block; }
+    #panel-manage { display: none; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    label { display: block; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+    input[type=text], textarea, select {
+      width: 100%; padding: 0.7rem 1rem; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+      font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input[type=text]:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 280px; line-height: 1.7; }
+    .content-hint { color: var(--muted); font-size: 0.78rem; margin-top: 0.4rem; }
+    .form-actions { display: flex; gap: 1rem; margin-top: 1.5rem; align-items: center; }
+    .btn {
+      display: inline-block; padding: 0.7rem 1.8rem;
+      background: linear-gradient(135deg, #7b4fce, #c89aff);
+      color: #fff; border: none; border-radius: 8px; font-size: 0.95rem;
+      cursor: pointer; letter-spacing: 0.04em; transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn-ghost {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      padding: 0.65rem 1.4rem; border-radius: 8px; font-size: 0.9rem;
+      cursor: pointer; transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .publish-status { font-size: 0.85rem; }
+    .publish-status.ok { color: #88cc66; }
+    .publish-status.err { color: var(--danger); }
+
+    /* Article list */
+    .article-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.2rem 1.5rem; margin-bottom: 1rem;
+      display: flex; align-items: flex-start; gap: 1rem;
+    }
+    .article-item-body { flex: 1; }
+    .article-item-tag { font-size: 0.75rem; color: var(--accent); margin-bottom: 0.3rem; }
+    .article-item-title { font-size: 1rem; color: var(--text); margin-bottom: 0.3rem; }
+    .article-item-meta { font-size: 0.78rem; color: var(--muted); }
+    .delete-btn {
+      background: none; border: 1px solid rgba(255,107,107,0.3); color: var(--danger);
+      padding: 0.3rem 0.7rem; border-radius: 6px; cursor: pointer;
+      font-size: 0.8rem; transition: background 0.2s; white-space: nowrap;
+    }
+    .delete-btn:hover { background: rgba(255,107,107,0.1); }
+    .empty-state { text-align: center; color: var(--muted); padding: 3rem; }
+
+    /* Comments in manage */
+    .comment-section { margin-top: 2.5rem; }
+    .comment-section h3 { color: var(--gold); font-size: 1rem; margin-bottom: 1rem; }
+    .comment-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.9rem 1.2rem; margin-bottom: 0.7rem;
+      display: flex; align-items: flex-start; gap: 1rem;
+    }
+    .comment-body { flex: 1; }
+    .comment-author { color: var(--accent); font-size: 0.85rem; margin-bottom: 0.2rem; }
+    .comment-text { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+    .comment-date { color: var(--muted); font-size: 0.75rem; opacity: 0.6; margin-top: 0.2rem; }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>✦ 管理後台</h1>
+    <p>星語占星 · 請輸入管理密碼</p>
+    <div class="login-error" id="login-error">密碼錯誤，請再試一次</div>
+    <input type="password" id="pw-input" placeholder="管理密碼" />
+    <button class="btn" style="width:100%" onclick="doLogin()">進入後台</button>
+  </div>
+</div>
+
+<!-- Admin -->
+<div id="admin-screen">
+  <header>
+    <div class="header-logo">✦ 星語 <span>後台</span></div>
+    <button id="logout-btn" onclick="doLogout()">登出</button>
+  </header>
+
+  <div class="admin-main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('write', this)">✏️ 撰寫文章</div>
+      <div class="tab" onclick="switchTab('manage', this)">📋 管理文章</div>
+    </div>
+
+    <!-- Write -->
+    <div id="panel-write">
+      <div class="form-row">
+        <div>
+          <label>文章標題 *</label>
+          <input type="text" id="a-title" placeholder="例：雙子座新月：思想的播種期" />
+        </div>
+        <div>
+          <label>標籤（選填）</label>
+          <input type="text" id="a-tag" placeholder="例：🌑 新月能量" />
+        </div>
+      </div>
+      <div>
+        <label>文章內容 *</label>
+        <textarea id="a-content" placeholder="在這裡撰寫你的占星文章…&#10;&#10;支援換行，段落之間空一行即可。"></textarea>
+        <div class="content-hint">換行會自動轉換為段落。</div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="publishArticle()">✦ 發佈文章</button>
+        <button class="btn-ghost" onclick="clearForm()">清除</button>
+        <span class="publish-status" id="pub-status"></span>
+      </div>
+    </div>
+
+    <!-- Manage -->
+    <div id="panel-manage">
+      <div id="articles-list"></div>
+      <div class="comment-section">
+        <h3>💬 最新留言</h3>
+        <div id="comments-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let adminPassword = '';
+
+// ── Login ─────────────────────────────────────────────────────
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogin() {
+  const pw = document.getElementById('pw-input').value;
+  fetch('/api/articles', { headers: { 'x-admin-password': pw } })
+    .then(r => {
+      if (r.ok) {
+        adminPassword = pw;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-screen').style.display = 'block';
+        loadManage();
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+      }
+    });
+}
+
+function doLogout() {
+  adminPassword = '';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-screen').style.display = 'none';
+  document.getElementById('pw-input').value = '';
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-write').style.display = name === 'write' ? 'block' : 'none';
+  document.getElementById('panel-manage').style.display = name === 'manage' ? 'block' : 'none';
+  if (name === 'manage') loadManage();
+}
+
+// ── Publish ───────────────────────────────────────────────────
+async function publishArticle() {
+  const title = document.getElementById('a-title').value.trim();
+  const tag = document.getElementById('a-tag').value.trim();
+  const content = document.getElementById('a-content').value.trim();
+  const status = document.getElementById('pub-status');
+
+  if (!title || !content) {
+    status.className = 'publish-status err';
+    status.textContent = '標題與內容為必填';
+    return;
+  }
+
+  const res = await fetch('/api/articles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-password': adminPassword },
+    body: JSON.stringify({ title, tag, content }),
+  });
+
+  if (res.ok) {
+    status.className = 'publish-status ok';
+    status.textContent = '✓ 發佈成功！';
+    clearForm();
+    setTimeout(() => status.textContent = '', 3000);
+  } else {
+    const err = await res.json();
+    status.className = 'publish-status err';
+    status.textContent = err.error || '發佈失敗';
+  }
+}
+
+function clearForm() {
+  document.getElementById('a-title').value = '';
+  document.getElementById('a-tag').value = '';
+  document.getElementById('a-content').value = '';
+}
+
+// ── Manage ────────────────────────────────────────────────────
+async function loadManage() {
+  const [articles, allComments] = await Promise.all([
+    fetch('/api/articles').then(r => r.json()),
+    Promise.all([]).then(() => fetchAllComments()),
+  ]);
+
+  const list = document.getElementById('articles-list');
+  if (!articles.length) {
+    list.innerHTML = '<div class="empty-state">尚無文章</div>';
+  } else {
+    list.innerHTML = articles.map(a => `
+      <div class="article-item" id="art-${a.id}">
+        <div class="article-item-body">
+          <div class="article-item-tag">${a.tag || '無標籤'}</div>
+          <div class="article-item-title">${escHtml(a.title)}</div>
+          <div class="article-item-meta">${fmtDate(a.date)}</div>
+        </div>
+        <button class="delete-btn" onclick="deleteArticle('${a.id}')">刪除</button>
+      </div>`).join('');
+  }
+}
+
+async function fetchAllComments() {
+  const articles = await fetch('/api/articles').then(r => r.json());
+  const results = await Promise.all(
+    articles.map(a => fetch(`/api/articles/${a.id}/comments`).then(r => r.json()))
+  );
+  const all = results.flat().sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20);
+  const cl = document.getElementById('comments-list');
+  if (!all.length) {
+    cl.innerHTML = '<div class="empty-state" style="padding:1.5rem">尚無留言</div>';
+    return;
+  }
+  cl.innerHTML = all.map(c => `
+    <div class="comment-item">
+      <div class="comment-body">
+        <div class="comment-author">💬 ${escHtml(c.author)}</div>
+        <div class="comment-text">${escHtml(c.body)}</div>
+        <div class="comment-date">${fmtDate(c.date)}</div>
+      </div>
+      <button class="delete-btn" onclick="deleteComment('${c.id}', this)">刪除</button>
+    </div>`).join('');
+}
+
+async function deleteArticle(id) {
+  if (!confirm('確定要刪除這篇文章嗎？相關留言也會一併刪除。')) return;
+  const res = await fetch(`/api/articles/${id}`, {
+    method: 'DELETE',
+    headers: { 'x-admin-password': adminPassword },
+  });
+  if (res.ok) {
+    document.getElementById(`art-${id}`)?.remove();
+  }
+}
+
+async function deleteComment(id, btn) {
+  const res = await fetch(`/api/comments/${id}`, {
+    method: 'DELETE',
+    headers: { 'x-admin-password': adminPassword },
+  });
+  if (res.ok) btn.closest('.comment-item').remove();
+}
+
+// ── Utils ─────────────────────────────────────────────────────
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+</script>
+</body>
+</html>

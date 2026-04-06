@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>星語占星 · Stellar Whispers</title>
+  <style>
+    :root {
+      --bg: #0a0a1a;
+      --surface: #111128;
+      --surface2: #1a1a35;
+      --accent: #c89aff;
+      --gold: #f0c060;
+      --text: #e8e0ff;
+      --muted: #8878aa;
+      --border: rgba(200,154,255,0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Stars background */
+    #stars-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Nav */
+    nav {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,26,0.8);
+      backdrop-filter: blur(10px);
+    }
+    .logo {
+      font-size: 1.5rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+    }
+    .logo span { color: var(--gold); }
+    nav ul { list-style: none; display: flex; gap: 2rem; }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--accent); }
+
+    /* Hero */
+    .hero {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 6rem 1rem 4rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      color: var(--accent);
+      letter-spacing: 0.12em;
+      text-shadow: 0 0 40px rgba(200,154,255,0.4);
+      margin-bottom: 1rem;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 1.1rem;
+      max-width: 500px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.8;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.8rem 2rem;
+      background: linear-gradient(135deg, #7b4fce, #c89aff);
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      font-size: 1rem;
+      cursor: pointer;
+      text-decoration: none;
+      letter-spacing: 0.05em;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(200,154,255,0.3);
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(200,154,255,0.4); }
+
+    /* Sections */
+    section {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+    .section-title {
+      text-align: center;
+      font-size: 1.6rem;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-bottom: 2.5rem;
+    }
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 2px;
+      background: var(--gold);
+      margin: 0.6rem auto 0;
+      opacity: 0.4;
+    }
+
+    /* Blog grid */
+    .blog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .blog-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .blog-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+    .card-tag {
+      font-size: 0.75rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+    }
+    .card-title {
+      font-size: 1.1rem;
+      color: var(--text);
+      margin-bottom: 0.6rem;
+      line-height: 1.5;
+    }
+    .card-desc { color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
+    .card-date { color: var(--muted); font-size: 0.78rem; margin-top: 1rem; opacity: 0.6; }
+    .blog-loading { text-align: center; color: var(--muted); padding: 2rem; }
+
+    /* Article modal */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(5,5,18,0.85);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      overflow-y: auto;
+      padding: 2rem 1rem;
+    }
+    .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%; max-width: 700px;
+      padding: 2.5rem;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 1.2rem; right: 1.5rem;
+      background: none; border: none; color: var(--muted);
+      font-size: 1.4rem; cursor: pointer; line-height: 1;
+      transition: color 0.2s;
+    }
+    .modal-close:hover { color: var(--accent); }
+    .modal-tag { font-size: 0.78rem; color: var(--accent); letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+    .modal-title { font-size: 1.6rem; color: var(--text); margin-bottom: 0.5rem; line-height: 1.4; }
+    .modal-date { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.8rem; opacity: 0.6; }
+    .modal-content { color: var(--muted); line-height: 1.9; font-size: 0.95rem; }
+    .modal-content p { margin-bottom: 1rem; }
+
+    /* Comments */
+    .comments-section { margin-top: 2.5rem; border-top: 1px solid var(--border); padding-top: 2rem; }
+    .comments-section h3 { color: var(--gold); font-size: 1rem; margin-bottom: 1.2rem; }
+    .comment-item {
+      padding: 0.9rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .comment-item:last-of-type { border-bottom: none; }
+    .comment-author { color: var(--accent); font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .comment-text { color: var(--muted); font-size: 0.88rem; line-height: 1.7; white-space: pre-wrap; }
+    .comment-date { color: var(--muted); font-size: 0.75rem; opacity: 0.5; margin-top: 0.25rem; }
+    .comment-form { margin-top: 1.5rem; }
+    .comment-form h4 { color: var(--text); font-size: 0.9rem; margin-bottom: 1rem; }
+    .comment-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem; }
+    .comment-form label { display: block; color: var(--muted); font-size: 0.78rem; margin-bottom: 0.3rem; }
+    .comment-form input, .comment-form textarea {
+      width: 100%; padding: 0.6rem 0.9rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.9rem;
+      outline: none; transition: border-color 0.2s; font-family: inherit;
+    }
+    .comment-form input:focus, .comment-form textarea:focus { border-color: var(--accent); }
+    .comment-form textarea { resize: vertical; min-height: 90px; }
+    .comment-submit {
+      margin-top: 0.8rem; display: flex; align-items: center; gap: 1rem;
+    }
+    .btn-sm {
+      padding: 0.55rem 1.4rem;
+      background: linear-gradient(135deg, #7b4fce, #c89aff);
+      color: #fff; border: none; border-radius: 8px;
+      font-size: 0.88rem; cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn-sm:hover { opacity: 0.85; }
+    .comment-msg { font-size: 0.82rem; }
+    .comment-msg.ok { color: #88cc66; }
+    .comment-msg.err { color: #ff6b6b; }
+    .no-comments { color: var(--muted); font-size: 0.85rem; opacity: 0.6; margin-bottom: 1rem; }
+
+    /* Chart section */
+    #chart-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.5rem;
+      margin: 0 1.5rem 3rem;
+      max-width: 1100px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .chart-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .form-group label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.4rem;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.65rem 1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+    .form-group select option { background: var(--surface2); }
+    .chart-submit {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    /* SVG Chart */
+    #chart-output { display: none; }
+    #chart-output.visible { display: block; }
+    .chart-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      align-items: center;
+    }
+    #natal-svg {
+      width: 100%;
+      max-width: 600px;
+      height: auto;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 30px rgba(200,154,255,0.15));
+    }
+    .chart-info {
+      width: 100%;
+      max-width: 600px;
+    }
+    .chart-info h3 {
+      color: var(--gold);
+      font-size: 1.1rem;
+      margin-bottom: 1.2rem;
+      letter-spacing: 0.08em;
+    }
+    .planet-list { list-style: none; }
+    .planet-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0;
+    }
+    .planet-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      padding: 0.6rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+    .planet-list li:last-child { border-bottom: none; }
+    .planet-symbol { font-size: 1.3rem; width: 1.8rem; text-align: center; }
+    .planet-name { color: var(--muted); width: 4.5rem; }
+    .planet-sign { color: var(--accent); width: 5rem; }
+    .planet-deg { color: var(--text); font-size: 0.85rem; }
+
+    .interpretation {
+      margin-top: 2rem;
+      padding: 1.2rem 1.5rem;
+      background: var(--surface2);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+    }
+    .interpretation h4 { color: var(--accent); margin-bottom: 0.7rem; font-size: 0.95rem; }
+    .interpretation p { color: var(--muted); font-size: 0.88rem; line-height: 1.8; }
+
+    /* Sign cards */
+    .signs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    .sign-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      text-align: center;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: default;
+    }
+    .sign-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .sign-glyph { font-size: 2rem; margin-bottom: 0.4rem; }
+    .sign-name { color: var(--accent); font-size: 0.9rem; letter-spacing: 0.05em; }
+    .sign-date { color: var(--muted); font-size: 0.75rem; margin-top: 0.2rem; }
+    .sign-key { color: var(--text); font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7; }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .divider {
+      border: none;
+      height: 1px;
+      background: var(--border);
+      margin: 1rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<nav>
+  <div class="logo">✦ 星語 <span>占星</span></div>
+  <ul>
+    <li><a href="#blog">星象日誌</a></li>
+    <li><a href="#chart-section">星盤解析</a></li>
+    <li><a href="#signs">十二星座</a></li>
+  </ul>
+</nav>
+
+<div class="hero">
+  <h1>探索你的星盤</h1>
+  <p>宇宙在你誕生的那一刻留下了印記。<br>讓星象為你揭示靈魂的地圖。</p>
+  <a href="#chart-section" class="btn">✦ 計算我的星盤</a>
+</div>
+
+<!-- Article modal -->
+<div class="modal-overlay" id="article-modal" onclick="closeModalOutside(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-tag" id="m-tag"></div>
+    <div class="modal-title" id="m-title"></div>
+    <div class="modal-date" id="m-date"></div>
+    <div class="modal-content" id="m-content"></div>
+    <div class="comments-section">
+      <h3>💬 留言區</h3>
+      <div id="m-comments"></div>
+      <div class="comment-form">
+        <h4>留下你的想法</h4>
+        <div class="comment-row">
+          <div>
+            <label>你的名稱 *</label>
+            <input type="text" id="c-author" placeholder="星塵旅人" maxlength="30" />
+          </div>
+        </div>
+        <div>
+          <label>留言 *</label>
+          <textarea id="c-body" placeholder="分享你的感受或問題…" maxlength="500"></textarea>
+        </div>
+        <div class="comment-submit">
+          <button class="btn-sm" onclick="submitComment()">送出留言</button>
+          <span class="comment-msg" id="c-msg"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Blog -->
+<section id="blog">
+  <h2 class="section-title">✦ 星象日誌</h2>
+  <div class="blog-grid" id="blog-grid">
+    <div class="blog-loading">載入文章中…</div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- Chart calculator -->
+<div id="chart-section">
+  <h2 class="section-title">✦ 星盤計算器</h2>
+  <div class="chart-form">
+    <div class="form-group">
+      <label>出生日期</label>
+      <input type="date" id="bdate" />
+    </div>
+    <div class="form-group">
+      <label>出生時間（選填）</label>
+      <input type="time" id="btime" value="12:00" />
+    </div>
+    <div class="form-group">
+      <label>出生地點</label>
+      <select id="bcity">
+        <option value="121.5,25.05">台北，台灣</option>
+        <option value="120.3,22.6">高雄，台灣</option>
+        <option value="114.16,22.28">香港</option>
+        <option value="116.38,39.92">北京，中國</option>
+        <option value="121.47,31.23">上海，中國</option>
+        <option value="103.83,1.35">新加坡</option>
+        <option value="139.69,35.68">東京，日本</option>
+        <option value="-74.0,40.71">紐約，美國</option>
+        <option value="-0.12,51.5">倫敦，英國</option>
+      </select>
+    </div>
+  </div>
+  <div class="chart-submit">
+    <button class="btn" onclick="generateChart()">✦ 生成我的星盤</button>
+  </div>
+
+  <div id="chart-output">
+    <div class="chart-wrap">
+      <svg id="natal-svg" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="chart-info">
+        <h3>⊙ 行星位置</h3>
+        <ul class="planet-list" id="planet-list"></ul>
+        <div class="interpretation" id="interpretation"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider" />
+
+<!-- Signs -->
+<section id="signs">
+  <h2 class="section-title">✦ 十二星座</h2>
+  <div class="signs-grid" id="signs-grid"></div>
+</section>
+
+<footer>
+  <p>✦ 星語占星 · 願宇宙的智慧指引你 ✦</p>
+  <p style="margin-top:0.4rem;opacity:0.5">星盤計算為簡化版本，僅供參考與娛樂</p>
+</footer>
+
+<script>
+// ─── Articles ────────────────────────────────────────────────
+let currentArticleId = null;
+
+async function loadArticles() {
+  const grid = document.getElementById('blog-grid');
+  try {
+    const articles = await fetch('/api/articles').then(r => r.json());
+    if (!articles.length) {
+      grid.innerHTML = '<div class="blog-loading">尚無文章，敬請期待。</div>';
+      return;
+    }
+    grid.innerHTML = articles.map(a => `
+      <div class="blog-card" onclick="openArticle('${a.id}')">
+        <div class="card-tag">${escHtml(a.tag || '占星')}</div>
+        <div class="card-title">${escHtml(a.title)}</div>
+        <div class="card-desc">${escHtml(a.content.slice(0, 80))}…</div>
+        <div class="card-date">${fmtDate(a.date)}</div>
+      </div>`).join('');
+  } catch {
+    grid.innerHTML = '<div class="blog-loading">無法載入文章</div>';
+  }
+}
+
+async function openArticle(id) {
+  currentArticleId = id;
+  const [article, comments] = await Promise.all([
+    fetch(`/api/articles/${id}`).then(r => r.json()),
+    fetch(`/api/articles/${id}/comments`).then(r => r.json()),
+  ]);
+
+  document.getElementById('m-tag').textContent = article.tag || '';
+  document.getElementById('m-title').textContent = article.title;
+  document.getElementById('m-date').textContent = fmtDate(article.date);
+  document.getElementById('m-content').innerHTML =
+    article.content.split(/\n\n+/).map(p => `<p>${escHtml(p).replace(/\n/g,'<br>')}</p>`).join('');
+
+  renderComments(comments);
+  document.getElementById('c-author').value = '';
+  document.getElementById('c-body').value = '';
+  document.getElementById('c-msg').textContent = '';
+  document.getElementById('article-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function renderComments(comments) {
+  const el = document.getElementById('m-comments');
+  if (!comments.length) {
+    el.innerHTML = '<div class="no-comments">還沒有留言，來第一個留言吧！</div>';
+    return;
+  }
+  el.innerHTML = comments.map(c => `
+    <div class="comment-item">
+      <div class="comment-author">✦ ${escHtml(c.author)}</div>
+      <div class="comment-text">${escHtml(c.body)}</div>
+      <div class="comment-date">${fmtDate(c.date)}</div>
+    </div>`).join('');
+}
+
+async function submitComment() {
+  const author = document.getElementById('c-author').value.trim();
+  const body = document.getElementById('c-body').value.trim();
+  const msg = document.getElementById('c-msg');
+
+  if (!author || !body) {
+    msg.className = 'comment-msg err';
+    msg.textContent = '請填寫名稱與留言';
+    return;
+  }
+
+  const res = await fetch(`/api/articles/${currentArticleId}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ author, body }),
+  });
+
+  if (res.ok) {
+    const comments = await fetch(`/api/articles/${currentArticleId}/comments`).then(r => r.json());
+    renderComments(comments);
+    document.getElementById('c-author').value = '';
+    document.getElementById('c-body').value = '';
+    msg.className = 'comment-msg ok';
+    msg.textContent = '✓ 留言成功！';
+    setTimeout(() => msg.textContent = '', 3000);
+  } else {
+    const err = await res.json();
+    msg.className = 'comment-msg err';
+    msg.textContent = err.error || '留言失敗';
+  }
+}
+
+function closeModal() {
+  document.getElementById('article-modal').classList.remove('open');
+  document.body.style.overflow = '';
+  currentArticleId = null;
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('article-modal')) closeModal();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()} / ${String(d.getMonth()+1).padStart(2,'0')} / ${String(d.getDate()).padStart(2,'0')}`;
+}
+
+loadArticles();
+
+// ─── Stars background ───────────────────────────────────────
+const canvas = document.getElementById('stars-canvas');
+const ctx = canvas.getContext('2d');
+let stars = [];
+function initStars() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  stars = Array.from({ length: 200 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.4,
+    a: Math.random(),
+    da: (Math.random() - 0.5) * 0.005
+  }));
+}
+function animateStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.a = Math.max(0.1, Math.min(1, s.a + s.da));
+    if (s.a <= 0.1 || s.a >= 1) s.da *= -1;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(220,210,255,${s.a})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(animateStars);
+}
+window.addEventListener('resize', initStars);
+initStars(); animateStars();
+
+// ─── Zodiac data ─────────────────────────────────────────────
+const SIGNS = [
+  { name:'牡羊座', en:'Aries',   glyph:'♈', dates:'3/21–4/19', key:'勇敢・行動・熱情',   element:'fire',   ruler:'火星' },
+  { name:'金牛座', en:'Taurus',  glyph:'♉', dates:'4/20–5/20', key:'穩定・感官・耐心',   element:'earth',  ruler:'金星' },
+  { name:'雙子座', en:'Gemini',  glyph:'♊', dates:'5/21–6/21', key:'溝通・好奇・多變',   element:'air',    ruler:'水星' },
+  { name:'巨蟹座', en:'Cancer',  glyph:'♋', dates:'6/22–7/22', key:'情感・家庭・直覺',   element:'water',  ruler:'月亮' },
+  { name:'獅子座', en:'Leo',     glyph:'♌', dates:'7/23–8/22', key:'創意・自信・領袖',   element:'fire',   ruler:'太陽' },
+  { name:'處女座', en:'Virgo',   glyph:'♍', dates:'8/23–9/22', key:'分析・細心・服務',   element:'earth',  ruler:'水星' },
+  { name:'天秤座', en:'Libra',   glyph:'♎', dates:'9/23–10/22',key:'平衡・和諧・美感',   element:'air',    ruler:'金星' },
+  { name:'天蠍座', en:'Scorpio', glyph:'♏', dates:'10/23–11/21',key:'深度・轉化・洞察',  element:'water',  ruler:'冥王星' },
+  { name:'射手座', en:'Sagittarius',glyph:'♐',dates:'11/22–12/21',key:'自由・哲學・冒險',element:'fire',   ruler:'木星' },
+  { name:'摩羯座', en:'Capricorn',glyph:'♑',dates:'12/22–1/19', key:'紀律・野心・務實',  element:'earth',  ruler:'土星' },
+  { name:'水瓶座', en:'Aquarius',glyph:'♒', dates:'1/20–2/18', key:'創新・獨立・人道',   element:'air',    ruler:'天王星' },
+  { name:'雙魚座', en:'Pisces',  glyph:'♓', dates:'2/19–3/20', key:'靈性・同理・夢想',   element:'water',  ruler:'海王星' },
+];
+
+const ELEMENT_COLORS = { fire:'#ff7755', earth:'#88cc66', air:'#88ccff', water:'#aa88ff' };
+
+// Render sign cards
+document.getElementById('signs-grid').innerHTML = SIGNS.map(s => `
+  <div class="sign-card">
+    <div class="sign-glyph">${s.glyph}</div>
+    <div class="sign-name">${s.name}</div>
+    <div class="sign-date">${s.dates}</div>
+    <div class="sign-key">${s.key}</div>
+  </div>`).join('');
+
+// ─── Accurate planet calculation (Schlyter orbital mechanics) ──
+function toR(d) { return d * Math.PI / 180; }
+function toDg(r) { return r * 180 / Math.PI; }
+function n360(d) { return ((d % 360) + 360) % 360; }
+
+function julianDay(date) {
+  let Y = date.getUTCFullYear(), Mo = date.getUTCMonth() + 1;
+  let D = date.getUTCDate() + (date.getUTCHours() + date.getUTCMinutes() / 60) / 24;
+  if (Mo <= 2) { Y--; Mo += 12; }
+  const A = Math.floor(Y / 100), B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (Y + 4716)) + Math.floor(30.6001 * (Mo + 1)) + D + B - 1524.5;
+}
+
+// Solve Kepler's equation iteratively
+function kepler(M, e) {
+  let E = M + toDg(e) * Math.sin(toR(M)) * (1 + e * Math.cos(toR(M)));
+  for (let i = 0; i < 15; i++) {
+    const Er = toR(E);
+    const dE = (M - (E - toDg(e) * Math.sin(Er))) / (1 - e * Math.cos(Er));
+    E += dE;
+    if (Math.abs(dE) < 1e-8) break;
+  }
+  return E;
+}
+
+// d = days since 2000 Jan 0.0 (Schlyter epoch = JD 2451543.5)
+function calcSunGeo(d) {
+  const w = 282.9404 + 4.70935e-5 * d;
+  const e = 0.016709 - 1.151e-9 * d;
+  const M = n360(356.0470 + 0.9856002585 * d);
+  const E = kepler(M, e); const Er = toR(E);
+  const xv = Math.cos(Er) - e, yv = Math.sqrt(1 - e*e) * Math.sin(Er);
+  const v = toDg(Math.atan2(yv, xv)), r = Math.sqrt(xv*xv + yv*yv);
+  const lon = n360(v + w);
+  // Earth's heliocentric position (opposite of Sun's geocentric direction)
+  return { lon, r, xe: -r * Math.cos(toR(lon)), ye: -r * Math.sin(toR(lon)) };
+}
+
+function calcMoon(d) {
+  const N = n360(125.1228 - 0.0529538083 * d);
+  const w = n360(318.0634 + 0.1643573223 * d);
+  const e = 0.054900, M = n360(115.3654 + 13.0649929509 * d);
+  const E = kepler(M, e); const Er = toR(E);
+  const xv = 60.2666 * (Math.cos(Er) - e), yv = 60.2666 * Math.sqrt(1 - e*e) * Math.sin(Er);
+  const v = toDg(Math.atan2(yv, xv));
+  const Nr = toR(N), ir = toR(5.1454), vwr = toR(v + w);
+  const xg = Math.cos(Nr)*Math.cos(vwr) - Math.sin(Nr)*Math.sin(vwr)*Math.cos(ir);
+  const yg = Math.sin(Nr)*Math.cos(vwr) + Math.cos(Nr)*Math.sin(vwr)*Math.cos(ir);
+  let lon = n360(toDg(Math.atan2(yg, xg)));
+  // Perturbations
+  const Ls = n360(280.46 + 0.9856474 * d), Ms = n360(357.529 + 0.98560028 * d);
+  const D = n360(lon - Ls);
+  lon = n360(lon
+    - 1.274 * Math.sin(toR(M - 2*D))
+    + 0.658 * Math.sin(toR(2*D))
+    - 0.186 * Math.sin(toR(Ms))
+    - 0.059 * Math.sin(toR(2*M - 2*D))
+    - 0.057 * Math.sin(toR(M - 2*D + Ms))
+    + 0.053 * Math.sin(toR(M + 2*D))
+    + 0.046 * Math.sin(toR(2*D - Ms))
+    + 0.041 * Math.sin(toR(M - Ms))
+    - 0.035 * Math.sin(toR(D))
+    - 0.031 * Math.sin(toR(M + Ms)));
+  return lon;
+}
+
+function planetLon(d, orb, sun) {
+  const N = n360(orb.N0 + orb.Nd * d), i = orb.i0 + orb.id * d;
+  const w = n360(orb.w0 + orb.wd * d), e = orb.e0 + orb.ed * d;
+  const M = n360(orb.M0 + orb.Md * d);
+  const E = kepler(M, e); const Er = toR(E);
+  const xv = orb.a * (Math.cos(Er) - e), yv = orb.a * Math.sqrt(1-e*e) * Math.sin(Er);
+  const v = toDg(Math.atan2(yv, xv)), r = Math.sqrt(xv*xv+yv*yv);
+  const Nr = toR(N), ir2 = toR(i), vwr = toR(v + w);
+  const xh = r*(Math.cos(Nr)*Math.cos(vwr) - Math.sin(Nr)*Math.sin(vwr)*Math.cos(ir2));
+  const yh = r*(Math.sin(Nr)*Math.cos(vwr) + Math.cos(Nr)*Math.sin(vwr)*Math.cos(ir2));
+  // Geocentric ecliptic longitude
+  return n360(toDg(Math.atan2(yh + sun.ye, xh + sun.xe)));
+}
+
+const ORBITS = {
+  mercury: { N0:48.3313, Nd:3.24587e-5, i0:7.0047, id:5e-8, w0:29.1241, wd:1.01444e-5, a:0.387098, e0:0.205635, ed:5.59e-10, M0:168.6562, Md:4.0923344368 },
+  venus:   { N0:76.6799, Nd:2.46590e-5, i0:3.3946, id:2.75e-8, w0:54.8910, wd:1.38374e-5, a:0.723330, e0:0.006773, ed:-1.302e-9, M0:48.0052, Md:1.6021302244 },
+  mars:    { N0:49.5574, Nd:2.11081e-5, i0:1.8497, id:-1.78e-8, w0:286.5016, wd:2.92961e-5, a:1.523688, e0:0.093405, ed:2.516e-9, M0:18.6021, Md:0.5240207766 },
+  jupiter: { N0:100.4542, Nd:2.76854e-5, i0:1.3030, id:-1.557e-7, w0:273.8777, wd:1.64505e-5, a:5.20256, e0:0.048498, ed:4.469e-9, M0:19.8950, Md:0.0830853001 },
+  saturn:  { N0:113.6634, Nd:2.38980e-5, i0:2.4886, id:-1.081e-7, w0:339.3939, wd:2.97661e-5, a:9.55475, e0:0.055546, ed:-9.499e-9, M0:316.9670, Md:0.0334442282 },
+  uranus:  { N0:74.0005, Nd:1.3978e-5, i0:0.7733, id:1.9e-8, w0:96.6612, wd:3.0565e-5, a:19.18171, e0:0.047318, ed:7.45e-9, M0:142.5905, Md:0.011725806 },
+  neptune: { N0:131.7806, Nd:3.0173e-5, i0:1.7700, id:-2.55e-7, w0:272.8461, wd:-6.027e-6, a:30.05826, e0:0.008606, ed:2.15e-9, M0:260.2471, Md:0.005995147 },
+};
+
+function calcPlanets(date) {
+  const JD = julianDay(date);
+  const d = JD - 2451543.5; // days since Schlyter epoch
+  const sun = calcSunGeo(d);
+  const raw = [
+    { name:'太陽',  sym:'☉', lon: sun.lon },
+    { name:'月亮',  sym:'☽', lon: calcMoon(d) },
+    { name:'水星',  sym:'☿', lon: planetLon(d, ORBITS.mercury, sun) },
+    { name:'金星',  sym:'♀', lon: planetLon(d, ORBITS.venus, sun) },
+    { name:'火星',  sym:'♂', lon: planetLon(d, ORBITS.mars, sun) },
+    { name:'木星',  sym:'♃', lon: planetLon(d, ORBITS.jupiter, sun) },
+    { name:'土星',  sym:'♄', lon: planetLon(d, ORBITS.saturn, sun) },
+    { name:'天王星',sym:'⛢', lon: planetLon(d, ORBITS.uranus, sun) },
+    { name:'海王星',sym:'♆', lon: planetLon(d, ORBITS.neptune, sun) },
+  ];
+  return raw.map(p => ({ ...p, signIdx: Math.floor(p.lon / 30), deg: p.lon % 30 }));
+}
+
+// Ascendant — proper GMST + obliquity
+function calcAsc(date, geoLon, geoLat) {
+  const JD = julianDay(date);
+  const T = (JD - 2451545.0) / 36525;
+  const GMST = n360(280.46061837 + 360.98564736629 * (JD - 2451545.0) + 0.000387933 * T * T);
+  const LST = n360(GMST + geoLon);
+  const eps = 23.439 - 0.013 * T;
+  const LSTr = toR(LST), epsr = toR(eps), latr = toR(geoLat);
+  return n360(toDg(Math.atan2(Math.cos(LSTr), -(Math.sin(LSTr)*Math.cos(epsr) + Math.tan(latr)*Math.sin(epsr)))));
+}
+
+// ─── Draw natal chart SVG ─────────────────────────────────────
+// Convention: ASC at LEFT (9 o'clock). Zodiac increases counterclockwise.
+// Angle formula: a = π + (lon - ascDeg)·π/180
+// x = cx + r·cos(a),  y = cy − r·sin(a)
+function lonToAngle(lon, ascDeg) {
+  return Math.PI + toR(lon - ascDeg);
+}
+function ptOnCircle(cx, cy, r, a) {
+  return { x: cx + r * Math.cos(a), y: cy - r * Math.sin(a) };
+}
+
+function drawChart(planets, ascDeg) {
+  const svg = document.getElementById('natal-svg');
+  const cx = 300, cy = 300;
+  const R = 268;   // outer zodiac ring edge
+  const r1 = 242;  // outer zodiac ring inner edge
+  const r2 = 208;  // house ring inner edge
+  const r3 = 155;  // planet circle edge
+
+  let html = '';
+
+  // ── Defs ──
+  html += `<defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#16163a"/><stop offset="100%" stop-color="#080815"/>
+    </radialGradient>
+    <radialGradient id="innerGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#11112a"/><stop offset="100%" stop-color="#0a0a1e"/>
+    </radialGradient>
+  </defs>`;
+
+  // ── Background ──
+  html += `<circle cx="${cx}" cy="${cy}" r="${R+10}" fill="url(#bgGrad)"/>`;
+  html += `<circle cx="${cx}" cy="${cy}" r="${R}"  fill="none" stroke="rgba(200,154,255,0.4)" stroke-width="1.5"/>`;
+  html += `<circle cx="${cx}" cy="${cy}" r="${r1}" fill="none" stroke="rgba(200,154,255,0.3)" stroke-width="1"/>`;
+  html += `<circle cx="${cx}" cy="${cy}" r="${r2}" fill="none" stroke="rgba(200,154,255,0.18)" stroke-width="0.8"/>`;
+  html += `<circle cx="${cx}" cy="${cy}" r="${r3}" fill="url(#innerGrad)" stroke="rgba(200,154,255,0.4)" stroke-width="1.5"/>`;
+
+  // ── Zodiac sign dividers & glyphs (fixed to ecliptic, rotated by ASC) ──
+  for (let i = 0; i < 12; i++) {
+    const divLon = i * 30;
+    const a = lonToAngle(divLon, ascDeg);
+    const p1 = ptOnCircle(cx, cy, r1, a), p2 = ptOnCircle(cx, cy, R, a);
+    html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="rgba(200,154,255,0.35)" stroke-width="1"/>`;
+
+    // Glyph at midpoint of sign
+    const midLon = i * 30 + 15;
+    const am = lonToAngle(midLon, ascDeg);
+    const rm = (r1 + R) / 2;
+    const pm = ptOnCircle(cx, cy, rm, am);
+    const s = SIGNS[i];
+    html += `<text x="${pm.x}" y="${pm.y}" text-anchor="middle" dominant-baseline="middle" font-size="17" fill="${ELEMENT_COLORS[s.element]}">${s.glyph}</text>`;
+  }
+
+  // ── House cusps (equal house, from ASC every 30°) ──
+  const AXIS_LABELS = { 0:'ASC', 3:'IC', 6:'DC', 9:'MC' };
+  for (let i = 0; i < 12; i++) {
+    const hLon = ascDeg + i * 30;  // house cusp longitude
+    const a = lonToAngle(hLon, ascDeg); // = π + i·π/6
+    const p1 = ptOnCircle(cx, cy, r2, a), p2 = ptOnCircle(cx, cy, r1, a);
+    const isAxis = i % 3 === 0;
+    html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="rgba(200,154,255,${isAxis?0.5:0.2})" stroke-width="${isAxis?1.5:0.7}"/>`;
+
+    // House number (midpoint between this cusp and next, in the house ring)
+    const midA = lonToAngle(hLon + 15, ascDeg);
+    const rn = (r2 + r1) / 2;
+    const pn = ptOnCircle(cx, cy, rn, midA);
+    html += `<text x="${pn.x}" y="${pn.y}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="rgba(200,154,255,0.5)">${i+1}</text>`;
+
+    // Axis labels (ASC/DC/IC/MC)
+    if (AXIS_LABELS[i] !== undefined) {
+      const labelR = r2 + (isAxis ? 20 : 14);
+      const pl = ptOnCircle(cx, cy, labelR, a);
+      html += `<text x="${pl.x}" y="${pl.y}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#f0c060" font-weight="bold">${AXIS_LABELS[i]}</text>`;
+    }
+  }
+
+  // ── Planets ──
+  // First pass: compute raw angles and detect clusters
+  const raw = planets.map(p => ({
+    ...p,
+    a0: lonToAngle(p.lon, ascDeg),
+    signColor: ELEMENT_COLORS[SIGNS[p.signIdx].element],
+  }));
+
+  // Spread clustered planets evenly
+  const SPREAD = toR(10);
+  const finalAngles = raw.map(p => p.a0);
+  for (let iter = 0; iter < 30; iter++) {
+    for (let i = 0; i < finalAngles.length; i++) {
+      for (let j = i + 1; j < finalAngles.length; j++) {
+        let diff = finalAngles[j] - finalAngles[i];
+        // Normalize diff to [-π, π]
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        if (Math.abs(diff) < SPREAD) {
+          const push = (SPREAD - Math.abs(diff)) / 2;
+          finalAngles[i] -= push * Math.sign(diff);
+          finalAngles[j] += push * Math.sign(diff);
+        }
+      }
+    }
+  }
+
+  raw.forEach((p, idx) => {
+    const a0 = p.a0;    // true ecliptic position angle
+    const af = finalAngles[idx]; // displayed position (may be spread)
+    const rp = r3 - 28;
+    const pt = ptOnCircle(cx, cy, r3, a0);      // tick on inner ring
+    const pt2 = ptOnCircle(cx, cy, r3 - 9, a0); // just inside
+    const pp = ptOnCircle(cx, cy, rp, af);       // planet dot
+
+    // Tick mark at true position
+    html += `<line x1="${pt.x}" y1="${pt.y}" x2="${pt2.x}" y2="${pt2.y}" stroke="${p.signColor}" stroke-width="2" opacity="0.8"/>`;
+    // Leader line to spread position
+    html += `<line x1="${pt2.x}" y1="${pt2.y}" x2="${pp.x}" y2="${pp.y}" stroke="${p.signColor}" stroke-width="0.7" opacity="0.3"/>`;
+    // Glow
+    html += `<circle cx="${pp.x}" cy="${pp.y}" r="11" fill="${p.signColor}" opacity="0.07"/>`;
+    // Dot
+    html += `<circle cx="${pp.x}" cy="${pp.y}" r="5" fill="${p.signColor}" opacity="0.95"/>`;
+    // Symbol above dot
+    html += `<text x="${pp.x}" y="${pp.y - 13}" text-anchor="middle" dominant-baseline="middle" font-size="15" fill="${p.signColor}" font-weight="bold">${p.sym}</text>`;
+  });
+
+  // ── Centre ──
+  html += `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="28" fill="rgba(200,154,255,0.1)">✦</text>`;
+
+  svg.innerHTML = html;
+}
+
+// ─── Interpretations ─────────────────────────────────────────
+const SUN_INTERP = [
+  '你充滿熱情與行動力，天生具有開創精神，喜歡挑戰與競爭。',
+  '你重視穩定與感官享受，對美有細膩感知，做事踏實有耐心。',
+  '你思維靈活、好奇心旺盛，善於溝通，適應力強。',
+  '你情感豐富、直覺敏銳，對家人充滿愛護，重視情感連結。',
+  '你自信有魅力，充滿創意與表演慾，渴望被肯定與欣賞。',
+  '你細心分析、追求完美，服務精神強，重視健康與秩序。',
+  '你追求和諧與公平，重視美感，善於在不同觀點間找到平衡。',
+  '你深邃、神秘，擁有強大的感知力，勇於面對黑暗與轉化。',
+  '你熱愛自由與冒險，追求更高智慧，樂觀開朗充滿哲思。',
+  '你有紀律與野心，踏實勤奮，對長遠目標有著持久的專注力。',
+  '你獨立前衛，重視自由與平等，常有打破傳統的創新想法。',
+  '你有豐富的想像力與靈性感知，充滿同理心，溫柔而夢幻。',
+];
+
+const MOON_INTERP = [
+  '月亮牡羊：情感直接衝動，需要即時回應。',
+  '月亮金牛：情感需要安全感與舒適，忠誠穩定。',
+  '月亮雙子：情感多變靈活，用語言表達內心。',
+  '月亮巨蟹：情感深沉敏感，重視家庭與歸屬感。',
+  '月亮獅子：情感熱烈，需要被欣賞與肯定。',
+  '月亮處女：情感細膩謹慎，用服務表達關愛。',
+  '月亮天秤：情感和諧平衡，渴望美好的關係。',
+  '月亮天蠍：情感深沉強烈，有強大的直覺力。',
+  '月亮射手：情感開朗自由，需要冒險與成長空間。',
+  '月亮摩羯：情感內斂謹慎，重視責任與現實。',
+  '月亮水瓶：情感獨立超然，重視精神交流。',
+  '月亮雙魚：情感豐富夢幻，具有靈性感知力。',
+];
+
+// ─── Generate chart ───────────────────────────────────────────
+function generateChart() {
+  const dateVal = document.getElementById('bdate').value;
+  const timeVal = document.getElementById('btime').value || '12:00';
+  const cityVal = document.getElementById('bcity').value;
+
+  if (!dateVal) { alert('請輸入出生日期'); return; }
+
+  const [lonStr, latStr] = cityVal.split(',');
+  const lon = parseFloat(lonStr), lat = parseFloat(latStr);
+  const [h, m] = timeVal.split(':').map(Number);
+  const date = new Date(`${dateVal}T${timeVal}:00`);
+
+  const planets = calcPlanets(date);
+  const ascDeg = calcAsc(date, lon, lat);
+  const ascSign = Math.floor(ascDeg / 30);
+
+  drawChart(planets, ascDeg);
+
+  // Planet list
+  const list = document.getElementById('planet-list');
+  list.innerHTML = planets.map(p => `
+    <li>
+      <span class="planet-symbol">${p.sym}</span>
+      <span class="planet-name">${p.name}</span>
+      <span class="planet-sign">${SIGNS[p.signIdx].glyph} ${SIGNS[p.signIdx].name}</span>
+      <span class="planet-deg">${p.deg.toFixed(1)}°</span>
+    </li>`).join('') + `
+    <li>
+      <span class="planet-symbol">↑</span>
+      <span class="planet-name">上升點</span>
+      <span class="planet-sign">${SIGNS[ascSign].glyph} ${SIGNS[ascSign].name}</span>
+      <span class="planet-deg">${(ascDeg % 30).toFixed(1)}°</span>
+    </li>`;
+
+  // Interpretation
+  const sun = planets[0], moon = planets[1];
+  document.getElementById('interpretation').innerHTML = `
+    <h4>✦ 星盤解說</h4>
+    <p><strong style="color:var(--gold)">太陽 ${SIGNS[sun.signIdx].glyph} ${SIGNS[sun.signIdx].name}</strong> — ${SUN_INTERP[sun.signIdx]}</p>
+    <br/>
+    <p><strong style="color:var(--accent)">月亮 ${SIGNS[moon.signIdx].glyph} ${SIGNS[moon.signIdx].name}</strong> — ${MOON_INTERP[moon.signIdx]}</p>
+    <br/>
+    <p><strong style="color:rgba(200,154,255,0.7)">上升 ${SIGNS[ascSign].glyph} ${SIGNS[ascSign].name}</strong> — 你給外界的第一印象帶有 ${SIGNS[ascSign].name} 的特質：${SIGNS[ascSign].key}。</p>`;
+
+  document.getElementById('chart-output').classList.add('visible');
+  document.getElementById('chart-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>
